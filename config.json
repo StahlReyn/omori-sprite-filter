@@ -7,15 +7,21 @@
     "angry",
     "happy"
   ],
-  "lighten_hurt": true,
-  "invert_defeat": true,
   "row_reuse": {
     "hurt": "sad",
     "defeat": "sad"
   },
-  "colors": {
+  "lighten_hurt": true,
+  "invert_defeat": true,
+  "glow_colors": {
     "sad": [0, 100, 255],
     "angry": [255, 0, 50],
     "happy": [255, 220, 0]
+  },
+  "glow_settings": {
+    "blur_radius": 3,
+    "expand_size": 7,
+    "pick_radius": 2,
+    "multiply_strength": 0.1
   }
 }

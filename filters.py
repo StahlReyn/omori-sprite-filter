@@ -61,10 +61,6 @@ def apply_random_pick_glow(
     
     return final_image
 
-def apply_emotion_glow(img, color):
-    new_img = apply_random_pick_glow(img, color)
-    return new_img
-
 def apply_desat(img):
     gray_image = img.convert('LA')
     return gray_image.convert('RGBA')
@@ -78,3 +74,30 @@ def apply_invert(img):
         return Image.merge('RGBA', (ir, ig, ib, a))
     return ImageOps.invert(img)
 
+def apply_channel_multiplier(img, color, strength=1.0):
+    """
+    Applies a color channel multiplier with an adjustable strength factor.
+    """
+    # Split the image into individual channels (Red, Green, Blue, Alpha)
+    r, g, b, alpha = img.split()
+    rgb_img = Image.merge("RGB", (r, g, b))
+
+    # Target multipliers for R, G, and B
+    target_r, target_g, target_b = color
+    
+    # Interpolate between a multiplier of 1.0 (no change) and the target multiplier
+    r_mult = 1.0 + (target_r - 1.0) * strength
+    g_mult = 1.0 + (target_g - 1.0) * strength
+    b_mult = 1.0 + (target_b - 1.0) * strength
+    
+    matrix = (
+        r_mult, 0,      0,      0,  # Red channel formula
+        0,      g_mult, 0,      0,  # Green channel formula
+        0,      0,      b_mult, 0   # Blue channel formula
+    )
+
+    # Extract the newly modified R, G, B channels and Merge
+    new_r, new_g, new_b = rgb_img.convert("RGB", matrix).split()
+    final_img = Image.merge("RGBA", (new_r, new_g, new_b, alpha))
+    
+    return final_img

@@ -7,7 +7,7 @@ import zipfile
 from pathlib import Path
 from PIL import Image, ImageEnhance
 
-from filters import apply_desat, apply_invert, apply_emotion_glow
+from filters import apply_desat, apply_invert, apply_random_pick_glow, apply_channel_multiplier
 from printutil import print_error, print_with_timestamp
 
 # This script creates sprite sheet and effect from individual image files
@@ -49,6 +49,7 @@ def create_omori_animated_spritesheet(config):
     lighten_hurt = config["lighten_hurt"]
     invert_defeat = config["invert_defeat"]
     row_reuse = config["row_reuse"]
+    glow_settings = config["glow_settings"]
 
     # Gather and sort files from ZIP alphabetically
     emotion_blocks = grab_emotion_blocks(zip_path, variant_names)
@@ -64,6 +65,7 @@ def create_omori_animated_spritesheet(config):
     i = 0
     hurt_row = []
     for f in emotion_blocks[row_name_convert("hurt", row_reuse)]:
+        print_with_timestamp(f"Process Hurt Effect")
         img = apply_desat(f)
         if lighten_hurt and i % 2 == 0: # Lighten every other sprite
             img = ImageEnhance.Brightness(img).enhance(1.2)
@@ -71,23 +73,25 @@ def create_omori_animated_spritesheet(config):
 
     defeat_row = []
     for f in emotion_blocks[row_name_convert("defeat", row_reuse)]:
+        print_with_timestamp(f"Process Defeat Effect")
         img = apply_desat(f)
         if invert_defeat:
             img = apply_invert(img)
         defeat_row.append(img)
 
     # Grid layout layout rows
-    sad_color = tuple(config["colors"]["sad"])
-    angry_color = tuple(config["colors"]["angry"])
-    happy_color = tuple(config["colors"]["happy"])
-
+    glow_colors = config["glow_colors"]
+    sad_color = tuple(glow_colors["sad"])
+    angry_color = tuple(glow_colors["angry"])
+    happy_color = tuple(glow_colors["happy"])
+    
     sprite_matrix = [
         emotion_blocks["neutral"],
         hurt_row,
         defeat_row,
-        [apply_emotion_glow(f, sad_color) for f in emotion_blocks["sad"]],
-        [apply_emotion_glow(f, angry_color) for f in emotion_blocks["angry"]],
-        [apply_emotion_glow(f, happy_color) for f in emotion_blocks["happy"]]
+        [apply_glow_config(f, sad_color, glow_settings) for f in emotion_blocks["sad"]],
+        [apply_glow_config(f, angry_color, glow_settings) for f in emotion_blocks["angry"]],
+        [apply_glow_config(f, happy_color, glow_settings) for f in emotion_blocks["happy"]]
     ]
 
     # Canvas Composition Setup
@@ -100,6 +104,7 @@ def create_omori_animated_spritesheet(config):
     # Grid stitch block
     for row_idx, row_images in enumerate(sprite_matrix):
         for col_idx, img in enumerate(row_images):
+            print_with_timestamp(f"Pasting ({row_idx}, {col_idx})")
             if img.size != (sprite_w, sprite_h):
                 img = img.resize((sprite_w, sprite_h), Image.Resampling.LANCZOS)
 
@@ -110,6 +115,23 @@ def create_omori_animated_spritesheet(config):
     # Output export
     spritesheet.save(output_path, "PNG")
     print_with_timestamp(f"Animated sheet built successfully! Generated a {total_columns}x6 grid layout saved to {output_path}.")
+    
+def apply_glow_config(img, glow_color, setting):
+    if "multiply_strength" in setting:
+        strength = float(setting["multiply_strength"])
+        if strength != 0:
+            print_with_timestamp(f"Process Tint {glow_color}")
+            # No tint is white, pure tint is the color (0 to Target)
+            img = apply_channel_multiplier(img, glow_color, strength / 255)
+    
+    print_with_timestamp(f"Process Glow {glow_color}")
+    return apply_random_pick_glow(
+        img=img,
+        glow_color=glow_color,
+        blur_radius=setting["blur_radius"],
+        expand_size=setting["expand_size"], 
+        pick_radius=setting["pick_radius"]
+    )
 
 def row_name_convert(base_name, row_reuse):
     if row_reuse[base_name]:
