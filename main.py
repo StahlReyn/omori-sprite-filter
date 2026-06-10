@@ -45,12 +45,13 @@ def create_folder_structure():
 def create_omori_animated_spritesheet(config):
     zip_path = config["zip_path"]
     output_path = config["output_sheet"]
-    variant_count = config["variant_count"]
+    variant_names = config["variant_names"]
     lighten_hurt = config["lighten_hurt"]
     invert_defeat = config["invert_defeat"]
+    row_reuse = config["row_reuse"]
 
     # Gather and sort files from ZIP alphabetically
-    emotion_blocks = grab_emotion_blocks(zip_path, variant_count)
+    emotion_blocks = grab_emotion_blocks(zip_path, variant_names)
 
     frames_per_emotion = len(emotion_blocks["neutral"])
     frame_size = emotion_blocks["neutral"][0].size
@@ -58,18 +59,18 @@ def create_omori_animated_spritesheet(config):
     # Normalize frame lists to make sure they all have an identical count
     for block in emotion_blocks:
         while len(block) < frames_per_emotion:
-            block.append(block[-1] if block else Image.new("RGBA", emotion_blocks["neutral"].size, (0,0,0,0)))
+            block.append(block[-1] if block else Image.new("RGBA", frame_size, (0,0,0,0)))
 
     i = 0
     hurt_row = []
-    for f in emotion_blocks[row_name_convert("hurt", config)]:
+    for f in emotion_blocks[row_name_convert("hurt", row_reuse)]:
         img = apply_desat(f)
         if lighten_hurt and i % 2 == 0: # Lighten every other sprite
             img = ImageEnhance.Brightness(img).enhance(1.2)
         hurt_row.append(img)
 
     defeat_row = []
-    for f in emotion_blocks[row_name_convert("defeat", config)]:
+    for f in emotion_blocks[row_name_convert("defeat", row_reuse)]:
         img = apply_desat(f)
         if invert_defeat:
             img = apply_invert(img)
@@ -110,28 +111,27 @@ def create_omori_animated_spritesheet(config):
     spritesheet.save(output_path, "PNG")
     print_with_timestamp(f"Animated sheet built successfully! Generated a {total_columns}x6 grid layout saved to {output_path}.")
 
-def row_name_convert(base_name, config):
-    if config["row_reuse"]:
-        new_block_name = config["row_reuse"][base_name]
-        print_with_timestamp(f"Using {new_block_name} for {base_name}")
+def row_name_convert(base_name, row_reuse):
+    if row_reuse[base_name]:
+        new_block_name = row_reuse[base_name]
+        print_with_timestamp(f"Using {new_block_name} for {base_name}.")
         return new_block_name
     else:
         return base_name
 
-def grab_emotion_blocks(zip_path, variant_count):
+def grab_emotion_blocks(zip_path, variant_names):
     print_with_timestamp(f"Loading Zip: {zip_path}")
     with zipfile.ZipFile(zip_path, "r") as archive:
         raw_file_list = filter_image_file_list(archive)
         total_files = len(raw_file_list)
         
         # Calculate how many animation frames exist per emotion slot
+        variant_count = len(variant_names)
         frames_per_emotion = math.ceil(total_files / variant_count)
         print_with_timestamp(f"Found {total_files} files. Splitting into {variant_count} variants with {frames_per_emotion} frames each.")
 
-        # Lists to hold the frame blocks
-        emotion_blocks = {"neutral": [], "sad": [], "angry": [], "happy": []}
-
-        # 3. Read files and slice them into sequential animation blocks
+        # Read files and slice them into sequential animation blocks
+        emotion_blocks = {}
         for idx, file_path in enumerate(raw_file_list):
             print_with_timestamp(f"File Got: {file_path}")
             with archive.open(file_path) as file_stream:
@@ -139,15 +139,12 @@ def grab_emotion_blocks(zip_path, variant_count):
                 
                 # Determine which block this sequence index belongs to
                 block_idx = idx // frames_per_emotion
-                if block_idx == 0:
-                    emotion_blocks["neutral"].append(img)
-                elif block_idx == 1:
-                    emotion_blocks["sad"].append(img)
-                elif block_idx == 2:
-                    emotion_blocks["angry"].append(img)
-                elif block_idx == 3:
-                    emotion_blocks["happy"].append(img)
-    return emotion_blocks
+                name = variant_names[block_idx]
+                if name not in emotion_blocks:
+                    emotion_blocks[name] = []
+                emotion_blocks[name].append(img)
+        return emotion_blocks
+    print_error("Failed loading zip file!")
 
 def filter_image_file_list(archive):
     raw_file_list = []

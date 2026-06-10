@@ -1,8 +1,12 @@
 {
   "zip_path": "input/Fairy.zip",
   "output_sheet": "output/spritesheet.png",
-  "frames_per_block": 2,
-  "variant_count": 4,
+  "variant_names": [
+    "neutral",
+    "sad",
+    "angry",
+    "happy"
+  ],
   "lighten_hurt": true,
   "invert_defeat": true,
   "row_reuse": {
