@@ -27,8 +27,9 @@ from printutil import print_error, print_with_timestamp
 # --- CONFIGURATION ---
 ZIP_PATH ="input/Fairy.zip"
 OUTPUT_SHEET = "output/spritesheet.png"
-MAX_COLUMNS = 2  # Maximum number of sprites per row
-BACKGROUND_COLOR = (0, 0, 0, 0)  # Transparent (use (255,255,255) for solid white)
+
+FRAMES_PER_BLOCK = 2
+VARIANT_COUNT = 4
 
 SAD_COLOR = (0, 100, 255)
 ANGRY_COLOR = (255, 0, 50)
@@ -52,9 +53,50 @@ def create_folder_structure():
 # The number can be divided by number of column to decide which emotion it belongs 
 # to in order by default if unspecified
 def create_omori_animated_spritesheet(zip_path, output_path):
-    raw_file_list = []
-
     # 1. Gather and sort files from ZIP alphabetically
+    emotion_blocks = grab_emotion_blocks(zip_path, VARIANT_COUNT)
+
+    frames_per_emotion = len(emotion_blocks["normal"])
+    frame_size = emotion_blocks["normal"][0].size
+
+    # Normalize frame lists to make sure they all have an identical count
+    for block in emotion_blocks:
+        while len(block) < frames_per_emotion:
+            block.append(block[-1] if block else Image.new("RGBA", emotion_blocks["normal"].size, (0,0,0,0)))
+
+    # Grid layout layout rows
+    sprite_matrix = [
+        emotion_blocks["normal"],
+        [apply_desat(f) for f in emotion_blocks["sad"]],
+        [apply_invert(apply_desat(f)) for f in emotion_blocks["sad"]],
+        [apply_emotion_glow(f, SAD_COLOR) for f in emotion_blocks["sad"]],
+        [apply_emotion_glow(f, ANGRY_COLOR) for f in emotion_blocks["angry"]],
+        [apply_emotion_glow(f, HAPPY_COLOR) for f in emotion_blocks["happy"]]
+    ]
+
+    # Canvas Composition Setup
+    sprite_w, sprite_h = frame_size
+    total_columns = frames_per_emotion
+    sheet_w = frames_per_emotion * sprite_w
+    sheet_h = 6 * sprite_h
+    spritesheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
+
+    # Grid stitch block
+    for row_idx, row_images in enumerate(sprite_matrix):
+        for col_idx, img in enumerate(row_images):
+            if img.size != (sprite_w, sprite_h):
+                img = img.resize((sprite_w, sprite_h), Image.Resampling.LANCZOS)
+                
+            x = col_idx * sprite_w
+            y = row_idx * sprite_h
+            spritesheet.paste(img, (x, y), img)
+
+    # Output export
+    spritesheet.save(output_path, "PNG")
+    print(f"Animated sheet built successfully! Generated a {total_columns}x6 grid layout saved to {output_path}.")
+
+def grab_emotion_blocks(zip_path, variant_count):
+    raw_file_list = []
     with zipfile.ZipFile(zip_path, "r") as archive:
         for file_path in archive.namelist():
             if "__MACOSX" in file_path or file_path.endswith("/"):
@@ -70,10 +112,9 @@ def create_omori_animated_spritesheet(zip_path, output_path):
         raw_file_list.sort()
         total_files = len(raw_file_list)
         
-        # 2. Automatically calculate how many animation frames exist per emotion slot
-        # OMORI uses 4 distinct emotion states (Normal, Sad, Angry, Happy)
-        frames_per_emotion = math.ceil(total_files / 4)
-        print(f"Detected {total_files} total files. Splitting into 4 emotions with {frames_per_emotion} animation frames each.")
+        # Calculate how many animation frames exist per emotion slot
+        frames_per_emotion = math.ceil(total_files / variant_count)
+        print(f"Found {total_files} files. Splitting into {variant_count} variants with {frames_per_emotion} frames each.")
 
         # Lists to hold the frame blocks
         emotion_blocks = {"normal": [], "sad": [], "angry": [], "happy": []}
@@ -93,60 +134,7 @@ def create_omori_animated_spritesheet(zip_path, output_path):
                     emotion_blocks["angry"].append(img)
                 elif block_idx == 3:
                     emotion_blocks["happy"].append(img)
-
-    # Fallback safety if the zip does not contain enough frames for all emotions
-    base_frames = emotion_blocks["normal"]
-    if not base_frames:
-        print("Error: Could not extract base 'normal' animation frames.")
-        return
-
-    sad_frames = emotion_blocks["sad"] if emotion_blocks["sad"] else base_frames
-    angry_frames = emotion_blocks["angry"] if emotion_blocks["angry"] else base_frames
-    happy_frames = emotion_blocks["happy"] if emotion_blocks["happy"] else base_frames
-
-    # Normalize frame lists to make sure they all have an identical count
-    all_blocks = [base_frames, sad_frames, angry_frames, happy_frames]
-    for block in all_blocks:
-        while len(block) < frames_per_emotion:
-            block.append(block[-1] if block else Image.new("RGBA", base_frames[0].size, (0,0,0,0)))
-
-    # 4. Construct the grid layout layout rows
-    # The columns map to: Normal Animation Block -> Sad Block -> Angry Block -> Happy Block
-    sprite_matrix = [
-        # Row 1: Normal
-        base_frames,
-        # Row 2: Hurt (Desaturated variants)
-        [apply_desat(f) for f in sad_frames],
-        # Row 3: Defeated (Inverted Hurt variants)
-        [apply_invert(apply_desat(f)) for f in sad_frames],
-        # Row 4: Sad (Blue Glow)
-        [apply_emotion_glow(f, SAD_COLOR) for f in sad_frames],
-        # Row 5: Angry (Red Glow)
-        [apply_emotion_glow(f, ANGRY_COLOR) for f in angry_frames],
-        # Row 6: Happy (Yellow Glow)
-        [apply_emotion_glow(f, HAPPY_COLOR) for f in happy_frames]
-    ]
-
-    # 5. Canvas Composition Setup
-    sprite_w, sprite_h = base_frames[0].size
-    total_columns = frames_per_emotion
-    sheet_w = frames_per_emotion * sprite_w
-    sheet_h = 6 * sprite_h
-    spritesheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
-
-    # 6. Grid stitch block
-    for row_idx, row_images in enumerate(sprite_matrix):
-        for col_idx, img in enumerate(row_images):
-            if img.size != (sprite_w, sprite_h):
-                img = img.resize((sprite_w, sprite_h), Image.Resampling.LANCZOS)
-                
-            x = col_idx * sprite_w
-            y = row_idx * sprite_h
-            spritesheet.paste(img, (x, y), img)
-
-    # 7. Output export
-    spritesheet.save(output_path, "PNG")
-    print(f"Animated sheet built successfully! Generated a {total_columns}x6 grid layout saved to {output_path}.")
-
+    return emotion_blocks
+    
 if __name__ == "__main__":
     main()
