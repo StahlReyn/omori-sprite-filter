@@ -1,8 +1,8 @@
 import io
+import json
 import math
 import os
 import zipfile
-import numpy as np
 
 from pathlib import Path
 from PIL import Image, ImageEnhance
@@ -13,9 +13,9 @@ from printutil import print_error, print_with_timestamp
 # This script creates sprite sheet and effect from individual image files
 # This script is intended to replicate OMORI's enemy sprite sheet
 
-# The input image files will likely at least contain Normal, Sad, Angry, Happy, 
+# The input image files will likely at least contain Normal, Sad, Angry, Happy,
 # But rows may reuse the same image as well.
-# The standard final output are 4 columns and 6 rows, 
+# The standard final output are 4 columns and 6 rows,
 # Each row have different effects:
 # - Row 1: Normal
 # - Row 2: Hurt (Sad or Angry with Desat)
@@ -24,39 +24,33 @@ from printutil import print_error, print_with_timestamp
 # - Row 5: Angry (Red Glow)
 # - Row 6: Happy (Yellow Glow)
 
-# --- CONFIGURATION ---
-ZIP_PATH ="input/Fairy.zip"
-OUTPUT_SHEET = "output/spritesheet.png"
-
-FRAMES_PER_BLOCK = 2
-VARIANT_COUNT = 4
-LIGHTEN_HURT = True
-INVERT_DEFEAT = True
-
-SAD_COLOR = (0, 100, 255)
-ANGRY_COLOR = (255, 0, 50)
-HAPPY_COLOR = (255, 220, 0)
+def load_config(config_path="config.json"):
+    with open(config_path, "r") as f:
+        return json.load(f)
 
 def main():
+    config = load_config()
     create_folder_structure()
-    
-    if not Path(ZIP_PATH).is_file():
-        print_error(f"File not found at {ZIP_PATH}.")
+
+    if not Path(config["zip_path"]).is_file():
+        print_error(f"File not found at {config['zip_path']}.")
         return
 
-    create_omori_animated_spritesheet(ZIP_PATH, OUTPUT_SHEET)
+    create_omori_animated_spritesheet(config)
 
 def create_folder_structure():
     Path("input").mkdir(parents=True, exist_ok=True)
     Path("output").mkdir(parents=True, exist_ok=True)
 
-# By default, it is likely the individual images are exported from art program, 
-# making it in format of "filename_0001" with incrementing number. 
-# The number can be divided by number of column to decide which emotion it belongs 
-# to in order by default if unspecified
-def create_omori_animated_spritesheet(zip_path, output_path):
+def create_omori_animated_spritesheet(config):
+    zip_path = config["zip_path"]
+    output_path = config["output_sheet"]
+    variant_count = config["variant_count"]
+    lighten_hurt = config["lighten_hurt"]
+    invert_defeat = config["invert_defeat"]
+
     # Gather and sort files from ZIP alphabetically
-    emotion_blocks = grab_emotion_blocks(zip_path, VARIANT_COUNT)
+    emotion_blocks = grab_emotion_blocks(zip_path, variant_count)
 
     frames_per_emotion = len(emotion_blocks["normal"])
     frame_size = emotion_blocks["normal"][0].size
@@ -65,30 +59,34 @@ def create_omori_animated_spritesheet(zip_path, output_path):
     for block in emotion_blocks:
         while len(block) < frames_per_emotion:
             block.append(block[-1] if block else Image.new("RGBA", emotion_blocks["normal"].size, (0,0,0,0)))
-    
+
     i = 0
     hurt_row = []
     for f in emotion_blocks["sad"]:
         img = apply_desat(f)
-        if LIGHTEN_HURT and i % 2 == 0: # Lighten every other sprite
+        if lighten_hurt and i % 2 == 0: # Lighten every other sprite
             img = ImageEnhance.Brightness(img).enhance(1.2)
         hurt_row.append(img)
-    
+
     defeat_row = []
     for f in emotion_blocks["sad"]:
         img = apply_desat(f)
-        if INVERT_DEFEAT:
+        if invert_defeat:
             img = apply_invert(img)
         defeat_row.append(img)
 
     # Grid layout layout rows
+    sad_color = tuple(config["colors"]["sad"])
+    angry_color = tuple(config["colors"]["angry"])
+    happy_color = tuple(config["colors"]["happy"])
+
     sprite_matrix = [
         emotion_blocks["normal"],
         hurt_row,
         defeat_row,
-        [apply_emotion_glow(f, SAD_COLOR) for f in emotion_blocks["sad"]],
-        [apply_emotion_glow(f, ANGRY_COLOR) for f in emotion_blocks["angry"]],
-        [apply_emotion_glow(f, HAPPY_COLOR) for f in emotion_blocks["happy"]]
+        [apply_emotion_glow(f, sad_color) for f in emotion_blocks["sad"]],
+        [apply_emotion_glow(f, angry_color) for f in emotion_blocks["angry"]],
+        [apply_emotion_glow(f, happy_color) for f in emotion_blocks["happy"]]
     ]
 
     # Canvas Composition Setup
@@ -103,7 +101,7 @@ def create_omori_animated_spritesheet(zip_path, output_path):
         for col_idx, img in enumerate(row_images):
             if img.size != (sprite_w, sprite_h):
                 img = img.resize((sprite_w, sprite_h), Image.Resampling.LANCZOS)
-                
+
             x = col_idx * sprite_w
             y = row_idx * sprite_h
             spritesheet.paste(img, (x, y), img)
