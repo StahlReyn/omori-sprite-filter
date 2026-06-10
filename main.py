@@ -24,7 +24,7 @@ def main():
         return
     
     result_image = create_krita_random_pick_glow(sprite_path)
-    result_image.save(output_path)
+    result_image.save(output_path, optimize=True, compress_level=9)
     print_with_timestamp(f"Noisy glow sprite saved to {output_path}")
 
 def create_folder_structure():
