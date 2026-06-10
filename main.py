@@ -5,7 +5,7 @@ import zipfile
 import numpy as np
 
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 from filters import apply_desat, apply_invert, apply_emotion_glow
 from printutil import print_error, print_with_timestamp
@@ -30,6 +30,8 @@ OUTPUT_SHEET = "output/spritesheet.png"
 
 FRAMES_PER_BLOCK = 2
 VARIANT_COUNT = 4
+LIGHTEN_HURT = True
+INVERT_DEFEAT = True
 
 SAD_COLOR = (0, 100, 255)
 ANGRY_COLOR = (255, 0, 50)
@@ -53,7 +55,7 @@ def create_folder_structure():
 # The number can be divided by number of column to decide which emotion it belongs 
 # to in order by default if unspecified
 def create_omori_animated_spritesheet(zip_path, output_path):
-    # 1. Gather and sort files from ZIP alphabetically
+    # Gather and sort files from ZIP alphabetically
     emotion_blocks = grab_emotion_blocks(zip_path, VARIANT_COUNT)
 
     frames_per_emotion = len(emotion_blocks["normal"])
@@ -63,12 +65,27 @@ def create_omori_animated_spritesheet(zip_path, output_path):
     for block in emotion_blocks:
         while len(block) < frames_per_emotion:
             block.append(block[-1] if block else Image.new("RGBA", emotion_blocks["normal"].size, (0,0,0,0)))
+    
+    i = 0
+    hurt_row = []
+    for f in emotion_blocks["sad"]:
+        img = apply_desat(f)
+        if LIGHTEN_HURT and i % 2 == 0: # Lighten every other sprite
+            img = ImageEnhance.Brightness(img).enhance(1.2)
+        hurt_row.append(img)
+    
+    defeat_row = []
+    for f in emotion_blocks["sad"]:
+        img = apply_desat(f)
+        if INVERT_DEFEAT:
+            img = apply_invert(img)
+        defeat_row.append(img)
 
     # Grid layout layout rows
     sprite_matrix = [
         emotion_blocks["normal"],
-        [apply_desat(f) for f in emotion_blocks["sad"]],
-        [apply_invert(apply_desat(f)) for f in emotion_blocks["sad"]],
+        hurt_row,
+        defeat_row,
         [apply_emotion_glow(f, SAD_COLOR) for f in emotion_blocks["sad"]],
         [apply_emotion_glow(f, ANGRY_COLOR) for f in emotion_blocks["angry"]],
         [apply_emotion_glow(f, HAPPY_COLOR) for f in emotion_blocks["happy"]]
