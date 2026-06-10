@@ -1,13 +1,13 @@
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageOps
 
-def random_pick(image, pick_radius):
+def random_pick(img, pick_radius):
     """
     Applies 'Random Pick' filter, 
     mimicking Krita's behavior of shuffling pixels with their local neighbors.
     """
     # Convert glow to NumPy array for the "Random Pick" calculation
-    glow_arr = np.array(image)
+    glow_arr = np.array(img)
     height, width, channels = glow_arr.shape
     
     # Generate random coordinate offsets for every pixel position
@@ -32,31 +32,49 @@ def random_pick(image, pick_radius):
     # Convert back to Pillow Image
     return Image.fromarray(random_picked_arr, "RGBA")
 
-def random_pick_glow(
-        sprite, 
+def apply_random_pick_glow(
+        img, 
         glow_color=(255, 255, 255), 
         blur_radius=3, 
-        expand_size=5, 
+        expand_size=7, 
         pick_radius=2
     ):
     """
     Applies a glow to a sprite and subjects the glow layer to a 'Random Pick' filter
     """
     #  Expand alpha silhouette
-    alpha = sprite.split()[3]
+    alpha = img.split()[3]
     mask = alpha.filter(ImageFilter.MaxFilter(expand_size * 2 + 1))
     
     # Create the soft base glow
-    glow = Image.new("RGBA", sprite.size, glow_color + (0,))
+    glow = Image.new("RGBA", img.size, glow_color + (0,))
     glow.putalpha(mask)
     if blur_radius > 0:
         glow = glow.filter(ImageFilter.GaussianBlur(blur_radius))
 
     noisy_glow = random_pick(glow, pick_radius)
     
-    # Layer original sprite on top of glow
-    final_image = Image.new("RGBA", sprite.size)
+    # Layer original img on top of glow
+    final_image = Image.new("RGBA", img.size)
     final_image.paste(noisy_glow, (0, 0))
-    final_image.paste(sprite, (0, 0), sprite)
+    final_image.paste(img, (0, 0), img)
     
     return final_image
+
+def apply_emotion_glow(img, color):
+    new_img = apply_random_pick_glow(img, color)
+    return new_img
+
+def apply_desat(img):
+    gray_image = img.convert('LA')
+    return gray_image.convert('RGBA')
+
+def apply_invert(img):
+    if img.mode == 'RGBA':
+        r, g, b, a = img.split()
+        rgb_img = Image.merge('RGB', (r, g, b))
+        inverted_rgb = ImageOps.invert(rgb_img)
+        ir, ig, ib = inverted_rgb.split()
+        return Image.merge('RGBA', (ir, ig, ib, a))
+    return ImageOps.invert(img)
+
