@@ -5,6 +5,10 @@
   "variant_count": 4,
   "lighten_hurt": true,
   "invert_defeat": true,
+  "row_reuse": {
+    "hurt": "sad",
+    "defeat": "sad"
+  },
   "colors": {
     "sad": [0, 100, 255],
     "angry": [255, 0, 50],
