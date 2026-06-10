@@ -24,27 +24,31 @@ from printutil import print_error, print_with_timestamp
 # - Row 5: Angry (Red Glow)
 # - Row 6: Happy (Yellow Glow)
 
-def load_config(config_path="config.json"):
+def load_config(config_path):
     with open(config_path, "r") as f:
         return json.load(f)
 
 def main():
-    config = load_config()
-    create_folder_structure()
+    config_path = "config.json"
+    if not Path(config_path).is_file():
+        print("config.json not found, creating default.")
+        create_default_config()
+    config = load_config(config_path)
 
-    if not Path(config["zip_path"]).is_file():
-        print_error(f"File not found at {config['zip_path']}.")
-        return
+    while True:
+        input_path = input("Enter input zip path: ")
+        if not Path(input_path).is_file():
+            print_error(f"File not found at {input_path}.")
+            continue
 
-    create_omori_animated_spritesheet(config)
+        output_path = input("Enter output image path: ")
+        if output_path == "":
+            output_path = "spritesheet.png"
+            print(f"Default output to {output_path}")
+        
+        create_omori_animated_spritesheet(input_path, output_path, config)
 
-def create_folder_structure():
-    Path("input").mkdir(parents=True, exist_ok=True)
-    Path("output").mkdir(parents=True, exist_ok=True)
-
-def create_omori_animated_spritesheet(config):
-    zip_path = config["zip_path"]
-    output_path = config["output_sheet"]
+def create_omori_animated_spritesheet(input_path, output_path, config):
     variant_names = config["variant_names"]
     lighten_hurt = config["lighten_hurt"]
     invert_defeat = config["invert_defeat"]
@@ -52,7 +56,7 @@ def create_omori_animated_spritesheet(config):
     glow_settings = config["glow_settings"]
 
     # Gather and sort files from ZIP alphabetically
-    emotion_blocks = grab_emotion_blocks(zip_path, variant_names)
+    emotion_blocks = grab_emotion_blocks(input_path, variant_names)
 
     frames_per_emotion = len(emotion_blocks["neutral"])
     frame_size = emotion_blocks["neutral"][0].size
@@ -183,6 +187,35 @@ def filter_image_file_list(archive):
 
     raw_file_list.sort()
     return raw_file_list
+
+def create_default_config():
+    data = {
+        "variant_names": [
+            "neutral",
+            "sad",
+            "angry",
+            "happy"
+        ],
+        "row_reuse": {
+            "hurt": "sad",
+            "defeat": "sad"
+        },
+        "lighten_hurt": true,
+        "invert_defeat": true,
+        "glow_colors": {
+            "sad": [0, 100, 255],
+            "angry": [255, 0, 50],
+            "happy": [255, 220, 0]
+        },
+        "glow_settings": {
+            "blur_radius": 3,
+            "expand_size": 7,
+            "pick_radius": 2,
+            "multiply_strength": 0.1
+        }
+    }
+    with open("user_data.json", "w", encoding="utf-8") as file:
+        json.dump(data, file, indent=4)
 
 if __name__ == "__main__":
     main()

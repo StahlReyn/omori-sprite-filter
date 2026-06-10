@@ -10,4 +10,4 @@ def print_with_timestamp(message):
 # Print Error with Red Color
 def print_error(message):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-    print(f"{COLOR_RED}[{timestamp}] ERROR: {message}{COLOR_RESET}", file=sys.stderr)
+    print(f"{COLOR_RED}[{timestamp}] ERROR: {message}{COLOR_RESET}")
