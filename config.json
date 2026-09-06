@@ -18,11 +18,11 @@
         "angry",
         "happy"
       ],
-      "frame_order": [0, 1, 2, 1],
       "row_reuse": {
         "hurt": "sad",
         "defeat": "sad"
       },
+      "frame_order": [0, 1, 2, 1],
       "lighten_hurt": true,
       "invert_defeat": true,
       "resize": {
@@ -45,9 +45,28 @@
         "multiply_strength": 0.1
       }
     },
-    "standard_no_invert": {
+    "standard_boss": {
       "$extends": "standard",
       "description": "Animated sprite sheet without defeat inversion.",
+      "invert_defeat": false
+    },
+    "standard_neutral": {
+      "$extends": "standard",
+      "description": "Animated sprite with only neutral animated.",
+      "variant_names": [
+        "neutral"
+      ],
+      "row_reuse": {
+        "sad": "neutral",
+        "angry": "neutral",
+        "happy": "neutral",
+        "hurt": "neutral",
+        "defeat": "neutral"
+      }
+    },
+    "standard_neutral_boss": {
+      "$extends": "standard_neutral",
+      "description": "Standard neutral only without inversion.",
       "invert_defeat": false
     },
     "portrait_base": {

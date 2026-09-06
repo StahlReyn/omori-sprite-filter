@@ -116,9 +116,9 @@ def create_omori_animated_spritesheet(input_path, output_path, config, export_si
         emotion_blocks["neutral"],
         hurt_row,
         defeat_row,
-        [apply_glow_config(f, sad_color, glow_settings) for f in emotion_blocks["sad"]],
-        [apply_glow_config(f, angry_color, glow_settings) for f in emotion_blocks["angry"]],
-        [apply_glow_config(f, happy_color, glow_settings) for f in emotion_blocks["happy"]]
+        [apply_glow_config(f, sad_color, glow_settings) for f in emotion_blocks[row_name_convert("sad", row_reuse)]],
+        [apply_glow_config(f, angry_color, glow_settings) for f in emotion_blocks[row_name_convert("angry", row_reuse)]],
+        [apply_glow_config(f, happy_color, glow_settings) for f in emotion_blocks[row_name_convert("happy", row_reuse)]]
     ]
 
     # Canvas Composition Setup
