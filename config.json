@@ -14,6 +14,17 @@
       },
       "lighten_hurt": true,
       "invert_defeat": true,
+      "resize_settings": {
+        "enabled": true,
+        "scale": 0.5,
+        "resampling": "bilinear",
+        "sharpen": {
+          "enabled": true,
+          "radius": 1,
+          "percent": 50,
+          "threshold": 0
+        }
+      },
       "glow_colors": {
         "sad": [0, 100, 255],
         "angry": [255, 0, 50],

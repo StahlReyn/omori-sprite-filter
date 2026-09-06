@@ -5,7 +5,7 @@ import os
 import zipfile
 
 from pathlib import Path
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 
 from filters import apply_desat, apply_invert, apply_random_pick_glow, apply_channel_multiplier
 from printutil import print_error, print_with_timestamp
@@ -30,6 +30,38 @@ def load_config(config_path):
 
 def read_path(prompt):
     return input(prompt).strip().strip('"').strip("'")
+
+def resize_and_sharpen(img, settings):
+    if not settings.get("enabled", True):
+        return img
+
+    scale = float(settings.get("scale", 0.5))
+    if scale <= 0:
+        raise ValueError("resize_settings.scale must be greater than zero.")
+
+    resampling = settings.get("resampling", "bilinear").lower()
+    resampling_filters = {
+        "nearest": Image.Resampling.NEAREST,
+        "bilinear": Image.Resampling.BILINEAR,
+        "bicubic": Image.Resampling.BICUBIC,
+        "lanczos": Image.Resampling.LANCZOS,
+    }
+    if resampling not in resampling_filters:
+        raise ValueError(f"Unsupported resize resampling filter: {resampling}")
+
+    resized = img.resize(
+        (max(1, round(img.width * scale)), max(1, round(img.height * scale))),
+        resampling_filters[resampling]
+    )
+
+    sharpen_settings = settings.get("sharpen", {})
+    if sharpen_settings.get("enabled", True):
+        resized = resized.filter(ImageFilter.UnsharpMask(
+            radius=float(sharpen_settings.get("radius", 1)),
+            percent=int(sharpen_settings.get("percent", 50)),
+            threshold=int(sharpen_settings.get("threshold", 0))
+        ))
+    return resized
 
 def select_config(config_data):
     if "presets" not in config_data:
@@ -87,7 +119,11 @@ def create_omori_animated_spritesheet(input_path, output_path, config):
     glow_settings = config["glow_settings"]
 
     # Gather and sort files from ZIP alphabetically
-    emotion_blocks = grab_emotion_blocks(input_path, variant_names)
+    emotion_blocks = grab_emotion_blocks(
+        input_path,
+        variant_names,
+        config.get("resize_settings")
+    )
 
     frames_per_emotion = len(emotion_blocks["neutral"])
     frame_size = emotion_blocks["neutral"][0].size
@@ -176,7 +212,7 @@ def row_name_convert(base_name, row_reuse):
     else:
         return base_name
 
-def grab_emotion_blocks(zip_path, variant_names):
+def grab_emotion_blocks(zip_path, variant_names, resize_settings=None):
     print_with_timestamp(f"Loading Zip: {zip_path}")
     with zipfile.ZipFile(zip_path, "r") as archive:
         raw_file_list = filter_image_file_list(archive)
@@ -193,6 +229,8 @@ def grab_emotion_blocks(zip_path, variant_names):
             print_with_timestamp(f"File Got: {file_path}")
             with archive.open(file_path) as file_stream:
                 img = Image.open(io.BytesIO(file_stream.read())).convert("RGBA")
+                if resize_settings is not None:
+                    img = resize_and_sharpen(img, resize_settings)
                 
                 # Determine which block this sequence index belongs to
                 block_idx = idx // frames_per_emotion
