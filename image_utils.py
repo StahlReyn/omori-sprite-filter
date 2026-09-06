@@ -127,17 +127,21 @@ def process_image(img, config):
     if isinstance(crop, dict):
         img = img.crop((crop["left"], crop["top"], crop["right"], crop["bottom"]))
 
-    resize = config.get("resize")
+    resize = config.get("resize", config.get("resize_settings"))
     if isinstance(resize, dict):
-        img = img.resize(
-            (int(resize["width"]), int(resize["height"])),
-            get_resampling_filter(config.get("resampling", "lanczos"))
-        )
-        return sharpen_image(img, config.get("sharpen"))
-
-    resize_settings = config.get("resize_settings")
-    if isinstance(resize_settings, dict):
-        return resize_and_sharpen(img, resize_settings)
+        if resize.get("enabled", True):
+            if "width" in resize and "height" in resize:
+                size = (int(resize["width"]), int(resize["height"]))
+            else:
+                scale = float(resize.get("scale", 0.5))
+                if scale <= 0:
+                    raise ValueError("resize scale must be greater than zero.")
+                size = (
+                    max(1, round(img.width * scale)),
+                    max(1, round(img.height * scale))
+                )
+            img = img.resize(size, get_resampling_filter(resize.get("resampling", "lanczos")))
+        return sharpen_image(img, resize.get("sharpen", config.get("sharpen")))
 
     return sharpen_image(img, config.get("sharpen"))
 

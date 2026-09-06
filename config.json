@@ -10,7 +10,7 @@
   },
   "presets": {
     "standard": {
-      "description": "Animated sprite sheet with emotion effects.",
+      "description": "Standard enemy sprite sheet. Uses sad for hurt/defeat.",
       "type": "animated",
       "variant_names": [
         "neutral",
@@ -25,7 +25,7 @@
       },
       "lighten_hurt": true,
       "invert_defeat": true,
-      "resize_settings": {
+      "resize": {
         "enabled": true,
         "scale": 0.5,
         "resampling": "bilinear",
@@ -56,19 +56,19 @@
     "portrait_base": {
       "description": "Shared portrait processing settings.",
       "type": "portrait",
-      "resampling": "lanczos",
-      "sharpen": {
-        "$template": "portrait_sharpen"
-      },
+      "columns": 3,
       "resize": {
         "width": 106,
-        "height": 106
+        "height": 106,
+        "resampling": "lanczos",
+        "sharpen": {
+          "$template": "portrait_sharpen"
+        }
       }
     },
     "portrait_menu": {
       "$extends": "portrait_base",
-      "description": "Crop and resize portrait sprites for menus.",
-      "columns": 3,
+      "description": "Crop and resize portrait sprites for menus. (Intended for 512x512)",
       "resize": {
         "width": 128,
         "height": 128
@@ -76,8 +76,7 @@
     },
     "portrait_battle_crop": {
       "$extends": "portrait_base",
-      "description": "Crop and resize portrait sprites for battle.",
-      "columns": 3,
+      "description": "Crop and resize portrait sprites for battle. (Intended for 512x512)",
       "crop": {
         "left": 44,
         "top": 88,
@@ -87,7 +86,7 @@
     },
     "portrait_dialogue_crop": {
       "$extends": "portrait_base",
-      "description": "Crop and resize portrait sprites for dialogue.",
+      "description": "Crop and resize portrait sprites for dialogue. (Intended for 700x700)",
       "columns": 4,
       "crop": {
         "left": 138,

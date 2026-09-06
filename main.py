@@ -58,6 +58,8 @@ def main():
     else:
         create_omori_animated_spritesheet(input_path, output_path, config)
 
+    input("Press any key to exit.")
+
 def create_omori_animated_spritesheet(input_path, output_path, config):
     variant_names = config["variant_names"]
     lighten_hurt = config["lighten_hurt"]
@@ -128,7 +130,7 @@ def create_omori_animated_spritesheet(input_path, output_path, config):
 
     # Output export
     spritesheet.save(output_path, "PNG")
-    print_with_timestamp(f"Animated sheet built successfully! Generated a {total_columns}x6 grid layout saved to {output_path}.")
+    print_with_timestamp(f"Finished! Generated a {total_columns}x6 grid layout saved to {output_path}.")
     
 def apply_glow_config(img, glow_color, setting):
     if "multiply_strength" in setting:
