@@ -170,8 +170,8 @@ def apply_glow_config(img, glow_color, setting):
     )
 
 def row_name_convert(base_name, row_reuse):
-    if row_reuse[base_name]:
-        new_block_name = row_reuse[base_name]
+    new_block_name = row_reuse.get(base_name)
+    if new_block_name:
         print_with_timestamp(f"Using {new_block_name} for {base_name}.")
         return new_block_name
     else:
