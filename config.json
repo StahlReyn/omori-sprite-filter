@@ -1,7 +1,7 @@
 {
   "default_preset": "standard",
   "templates": {
-    "portrait_sharpen": {
+    "default_sharpen": {
       "enabled": true,
       "radius": 1,
       "percent": 25,
@@ -30,10 +30,7 @@
         "scale": 0.5,
         "resampling": "bilinear",
         "sharpen": {
-          "enabled": true,
-          "radius": 1,
-          "percent": 50,
-          "threshold": 0
+          "$template": "default_sharpen"
         }
       },
       "glow_colors": {
@@ -60,9 +57,9 @@
       "resize": {
         "width": 106,
         "height": 106,
-        "resampling": "lanczos",
+        "resampling": "bilinear",
         "sharpen": {
-          "$template": "portrait_sharpen"
+          "$template": "default_sharpen"
         }
       }
     },
@@ -71,7 +68,11 @@
       "description": "Crop and resize portrait sprites for menus. (Intended for 512x512)",
       "resize": {
         "width": 128,
-        "height": 128
+        "height": 128,
+        "resampling": "bilinear",
+        "sharpen": {
+          "$template": "default_sharpen"
+        }
       }
     },
     "portrait_battle_crop": {

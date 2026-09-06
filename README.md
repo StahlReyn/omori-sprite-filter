@@ -4,6 +4,7 @@ Automates creating consistent spritesheet from individual image frames.
 ## Features
 
 - Choose animated or portrait presets at startup.
+- Process multiple images in one run; choose whether to exit after each job.
 - Use ZIP archives or folders as input for either mode.
 - Drag and drop paths into the console; quoted Windows paths are supported.
 - Press Enter at the output prompt to save beside the input with the same name as a PNG.
@@ -11,6 +12,7 @@ Automates creating consistent spritesheet from individual image frames.
 - Omit crop or resize settings to skip those steps.
 - Reuse settings with `$template` and inherit complete presets with `$extends`.
 - Configure animated frame output order, such as `[0, 1, 2, 1]`.
+- Optionally export the processed first neutral frame as `<output>_single.png`.
 - Apply animated effects including glow, desaturation, inversion, and frame reuse.
 - Stitch portrait images into configurable grids without animated effects.
 

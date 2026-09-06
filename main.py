@@ -33,13 +33,8 @@ def default_output_path(input_path):
         return path.with_suffix(".png")
     return path.parent / f"{path.name}.png"
 
-def main():
-    config_path = "config.json"
-    if not Path(config_path).is_file():
-        print_error("config.json not found. Create it before running the program.")
-        return
+def process_once(config_path):
     config = select_config(load_config(config_path))
-
     print_info("HINT: Drag and drop a file on Windows copies file path.")
     input_path = read_path("Enter input ZIP or folder path: ")
     input_is_valid = Path(input_path).is_file() or Path(input_path).is_dir()
@@ -56,11 +51,27 @@ def main():
         from portrait import create_sprite_sheet
         create_sprite_sheet(input_path, output_path, config)
     else:
-        create_omori_animated_spritesheet(input_path, output_path, config)
+        single_frame = read_path("Also export the first frame as a separate image? [y/N]: ").lower()
+        create_omori_animated_spritesheet(
+            input_path,
+            output_path,
+            config,
+            export_single_frame=single_frame in ("y", "yes")
+        )
 
-    input("Press any key to exit.")
+def main():
+    config_path = "config.json"
+    if not Path(config_path).is_file():
+        print_error("config.json not found. Create it before running the program.")
+        return
 
-def create_omori_animated_spritesheet(input_path, output_path, config):
+    while True:
+        process_once(config_path)
+        should_exit = read_path("Exit the program? [y/N]: ").lower()
+        if should_exit in ("y", "yes"):
+            break
+
+def create_omori_animated_spritesheet(input_path, output_path, config, export_single_frame=False):
     variant_names = config["variant_names"]
     lighten_hurt = config["lighten_hurt"]
     invert_defeat = config["invert_defeat"]
@@ -131,6 +142,15 @@ def create_omori_animated_spritesheet(input_path, output_path, config):
     # Output export
     spritesheet.save(output_path, "PNG")
     print_with_timestamp(f"Finished! Generated a {total_columns}x6 grid layout saved to {output_path}.")
+
+    if export_single_frame:
+        single_output_path = Path(output_path).with_name(
+            f"{Path(output_path).stem}_single.png"
+        )
+        single_frame = spritesheet.crop((0, 0, sprite_w, sprite_h))
+        single_frame.save(single_output_path, "PNG")
+        single_frame.close()
+        print_with_timestamp(f"Saved first frame to {single_output_path}.")
     
 def apply_glow_config(img, glow_color, setting):
     if "multiply_strength" in setting:
