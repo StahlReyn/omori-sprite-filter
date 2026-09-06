@@ -6,6 +6,7 @@ Automates creating consistent spritesheet from individual image frames.
 - Choose animated or portrait presets at startup.
 - Use ZIP archives or folders as input for either mode.
 - Drag and drop paths into the console; quoted Windows paths are supported.
+- Press Enter at the output prompt to save beside the input with the same name as a PNG.
 - Configure crop, resize, resampling, and sharpening independently.
 - Omit crop, resize, or sharpen settings to skip those steps.
 - Reuse settings with `$template` and inherit complete presets with `$extends`.

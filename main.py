@@ -27,6 +27,12 @@ from printutil import print_error, print_with_timestamp, print_info
 def read_path(prompt):
     return input(prompt).strip().strip('"').strip("'")
 
+def default_output_path(input_path):
+    path = Path(input_path)
+    if path.is_file():
+        return path.with_suffix(".png")
+    return path.parent / f"{path.name}.png"
+
 def main():
     config_path = "config.json"
     if not Path(config_path).is_file():
@@ -43,7 +49,7 @@ def main():
 
     output_path = read_path("Enter output image file path: ")
     if output_path == "":
-        output_path = "spritesheet.png"
+        output_path = default_output_path(input_path)
         print_info(f"Default output to {output_path}")
 
     if config.get("type") == "portrait":
