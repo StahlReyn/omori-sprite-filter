@@ -48,61 +48,52 @@
         "multiply_strength": 0.1
       }
     },
-    "portrait_menu": {
-      "description": "Crop and resize portrait sprites for menus.",
+    "standard_no_invert": {
+      "$extends": "standard",
+      "description": "Animated sprite sheet without defeat inversion.",
+      "invert_defeat": false
+    },
+    "portrait_base": {
+      "description": "Shared portrait processing settings.",
       "type": "portrait",
-      "columns": 3,
-      "crop": {
-        "left": 0,
-        "top": 0,
-        "right": 512,
-        "bottom": 512
-      },
-      "resize": {
-        "width": 128,
-        "height": 128
-      },
       "resampling": "lanczos",
       "sharpen": {
         "$template": "portrait_sharpen"
+      },
+      "resize": {
+        "width": 106,
+        "height": 106
+      }
+    },
+    "portrait_menu": {
+      "$extends": "portrait_base",
+      "description": "Crop and resize portrait sprites for menus.",
+      "columns": 3,
+      "resize": {
+        "width": 128,
+        "height": 128
       }
     },
     "portrait_battle_crop": {
+      "$extends": "portrait_base",
       "description": "Crop and resize portrait sprites for battle.",
-      "type": "portrait",
       "columns": 3,
       "crop": {
         "left": 44,
         "top": 88,
         "right": 468,
         "bottom": 512
-      },
-      "resize": {
-        "width": 106,
-        "height": 106
-      },
-      "resampling": "lanczos",
-      "sharpen": {
-        "$template": "portrait_sharpen"
       }
     },
     "portrait_dialogue_crop": {
+      "$extends": "portrait_base",
       "description": "Crop and resize portrait sprites for dialogue.",
-      "type": "portrait",
       "columns": 4,
       "crop": {
         "left": 138,
         "top": 276,
         "right": 562,
         "bottom": 700
-      },
-      "resize": {
-        "width": 106,
-        "height": 106
-      },
-      "resampling": "lanczos",
-      "sharpen": {
-        "$template": "portrait_sharpen"
       }
     }
   }

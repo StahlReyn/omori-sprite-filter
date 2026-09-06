@@ -1,4 +1,6 @@
 import os
+import io
+import zipfile
 
 from PIL import Image
 
@@ -9,18 +11,31 @@ VALID_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
 
 
 def create_sprite_sheet(folder_path, output_name, config):
-    image_files = sorted(
-        file_name for file_name in os.listdir(folder_path)
-        if file_name.lower().endswith(VALID_EXTENSIONS)
-    )
+    input_path = os.fspath(folder_path)
+    if os.path.isdir(input_path):
+        image_sources = [
+            (file_name, os.path.join(input_path, file_name))
+            for file_name in sorted(os.listdir(input_path))
+            if file_name.lower().endswith(VALID_EXTENSIONS)
+        ]
+    else:
+        with zipfile.ZipFile(input_path, "r") as archive:
+            image_sources = [
+                (file_name, archive.read(file_name))
+                for file_name in sorted(archive.namelist())
+                if not file_name.endswith("/")
+                and "__MACOSX" not in file_name
+                and file_name.lower().endswith(VALID_EXTENSIONS)
+            ]
 
-    if not image_files:
+    if not image_sources:
         print("No valid images found.")
         return
 
     processed_images = []
-    for file_name in image_files:
-        with Image.open(os.path.join(folder_path, file_name)) as image:
+    for file_name, source in image_sources:
+        image_data = io.BytesIO(source) if isinstance(source, bytes) else source
+        with Image.open(image_data) as image:
             processed_images.append(process_image(image.convert("RGBA"), config))
 
     columns, rows, cell_width, cell_height = create_grid_sheet(

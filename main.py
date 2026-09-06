@@ -8,7 +8,7 @@ from PIL import Image, ImageEnhance
 
 from filters import apply_desat, apply_invert, apply_random_pick_glow, apply_channel_multiplier
 from image_utils import load_config, process_image, select_config
-from printutil import print_error, print_with_timestamp
+from printutil import print_error, print_with_timestamp, print_info
 
 # This script creates sprite sheet and effect from individual image files
 # This script is intended to replicate OMORI's enemy sprite sheet
@@ -33,17 +33,18 @@ def main():
         print_error("config.json not found. Create it before running the program.")
         return
     config = select_config(load_config(config_path))
-    input_prompt = "Enter input folder path" if config.get("type") == "portrait" else "Enter input ZIP path"
-    input_path = read_path(f"{input_prompt} (you can drag and drop it here): ")
-    input_is_valid = Path(input_path).is_dir() if config.get("type") == "portrait" else Path(input_path).is_file()
+
+    print_info("HINT: Drag and drop a file on Windows copies file path.")
+    input_path = read_path("Enter input ZIP or folder path: ")
+    input_is_valid = Path(input_path).is_file() or Path(input_path).is_dir()
     if not input_is_valid:
         print_error(f"Input path not found at {input_path}.")
         return
 
-    output_path = read_path("Enter output image file path (drag and drop a file, or press Enter): ")
+    output_path = read_path("Enter output image file path: ")
     if output_path == "":
         output_path = "spritesheet.png"
-        print(f"Default output to {output_path}")
+        print_info(f"Default output to {output_path}")
 
     if config.get("type") == "portrait":
         from portrait import create_sprite_sheet
@@ -71,7 +72,7 @@ def create_omori_animated_spritesheet(input_path, output_path, config):
 
     i = 0
     hurt_row = []
-    for f in emotion_blocks[row_name_convert("hurt", row_reuse)]:
+    for i, f in enumerate(emotion_blocks[row_name_convert("hurt", row_reuse)]):
         print_with_timestamp(f"Process Hurt Effect")
         img = apply_desat(f)
         if lighten_hurt and i % 2 == 0: # Lighten every other sprite
@@ -169,9 +170,21 @@ def apply_frame_order(emotion_blocks, frame_order=None, duplicate_last_frame=Fal
     return ordered_blocks
 
 def grab_emotion_blocks(zip_path, variant_names, config):
-    print_with_timestamp(f"Loading Zip: {zip_path}")
-    with zipfile.ZipFile(zip_path, "r") as archive:
+    input_path = Path(zip_path)
+    if input_path.is_dir():
+        print_with_timestamp(f"Loading folder: {input_path}")
+        raw_file_list = sorted(
+            path for path in input_path.rglob("*")
+            if path.is_file() and path.suffix.lower() in (".png", ".jpg", ".jpeg", ".bmp", ".webp")
+        )
+        image_streams = ((path, path.open("rb")) for path in raw_file_list)
+    else:
+        print_with_timestamp(f"Loading Zip: {input_path}")
+        archive = zipfile.ZipFile(input_path, "r")
         raw_file_list = filter_image_file_list(archive)
+        image_streams = ((file_path, archive.open(file_path)) for file_path in raw_file_list)
+
+    try:
         total_files = len(raw_file_list)
         
         # Calculate how many animation frames exist per emotion slot
@@ -181,9 +194,9 @@ def grab_emotion_blocks(zip_path, variant_names, config):
 
         # Read files and slice them into sequential animation blocks
         emotion_blocks = {}
-        for idx, file_path in enumerate(raw_file_list):
+        for idx, (file_path, file_stream) in enumerate(image_streams):
             print_with_timestamp(f"File Got: {file_path}")
-            with archive.open(file_path) as file_stream:
+            with file_stream:
                 img = Image.open(io.BytesIO(file_stream.read())).convert("RGBA")
                 img = process_image(img, config)
                 
@@ -198,7 +211,9 @@ def grab_emotion_blocks(zip_path, variant_names, config):
             config.get("frame_order"),
             config.get("duplicate_last_frame", False)
         )
-    print_error("Failed loading zip file!")
+    finally:
+        if not input_path.is_dir():
+            archive.close()
 
 def filter_image_file_list(archive):
     raw_file_list = []
@@ -206,7 +221,7 @@ def filter_image_file_list(archive):
         if "__MACOSX" in file_path or file_path.endswith("/"):
             continue
         file_name = os.path.basename(file_path)
-        if file_name.lower().endswith((".png", ".jpg", ".jpeg")) and not file_name.startswith("."):
+        if file_name.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".webp")) and not file_name.startswith("."):
             raw_file_list.append(file_path)
 
     if not raw_file_list:

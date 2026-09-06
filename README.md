@@ -1,32 +1,17 @@
-# omori-sprite-filter
-Automates creating consistent spritesheet from individual image frames
+# OMORI Sprite Filter
+Automates creating consistent spritesheet from individual image frames.
 
-## Configuration
+## Features
 
-Add presets to `config.json` under `presets`. The program lists animated and portrait
-presets with their descriptions when it starts; choose one by number or name, or press
-Enter to use `default_preset`. All presets use the same input and output prompts: animated
-presets accept a ZIP file, while portrait presets accept a folder.
+- Choose animated or portrait presets at startup.
+- Use ZIP archives or folders as input for either mode.
+- Drag and drop paths into the console; quoted Windows paths are supported.
+- Configure crop, resize, resampling, and sharpening independently.
+- Omit crop, resize, or sharpen settings to skip those steps.
+- Reuse settings with `$template` and inherit complete presets with `$extends`.
+- Configure animated frame output order, such as `[0, 1, 2, 1]`.
+- Apply animated effects including glow, desaturation, inversion, and frame reuse.
+- Stitch portrait images into configurable grids without animated effects.
 
-The existing flat config format is still supported and is treated as one default preset.
-
-When the program runs, input paths can be pasted or dragged into the console. Quotation
-marks added by Windows are removed automatically. Press Enter for the default output path.
-
-Each preset can optionally include `resize_settings`. Resizing is enabled by default in
-the sample config: images are scaled to half size with bilinear resampling, then lightly
-sharpened. Set `enabled` to `false` to keep the source size, or adjust `scale`,
-`resampling`, and the `sharpen` settings.
-
-Portrait presets use `type: "portrait"` and support crop, fixed resize, sharpening, and
-column count. They are processed without animated-sprite effects such as glow, frame reuse,
-or emotion rows. Paths are supplied at runtime rather than stored in the config.
-
-Common nested settings can be reused with a template reference such as
-`{"$template": "portrait_sharpen"}`. A preset can override individual template fields.
-Omit `crop`, `resize`, or `sharpen` to skip that step.
-
-Animated presets can define `frame_order` to specify the final output-column order. Its
-values are zero-based positions within each source block, not literal filenames. For
-example, `[0, 1, 2, 1]` turns three source columns into four output columns by placing
-source column 1 in the fourth column. Omit it to keep the source order unchanged.
+Configuration is stored in `config.json` under `presets`. Each preset includes a
+description and can override only the settings it needs.

@@ -30,16 +30,36 @@ def select_config(config_data):
         description = presets[preset_name].get("description", "")
         description = f" - {description}" if description else ""
         print(f"  {index}. {preset_name}{suffix}{description}")
+    print("=" * 32)
 
     while True:
         choice = input(f"Choose a config preset [{default_preset}]: ").strip()
         if choice == "":
-            return resolve_templates(presets[default_preset], templates)
+            return resolve_preset(default_preset, presets, templates)
         if choice.isdigit() and 1 <= int(choice) <= len(preset_names):
-            return resolve_templates(presets[preset_names[int(choice) - 1]], templates)
+            return resolve_preset(preset_names[int(choice) - 1], presets, templates)
         if choice in presets:
-            return resolve_templates(presets[choice], templates)
+            return resolve_preset(choice, presets, templates)
         print("Invalid preset. Enter its number or name.")
+
+
+def resolve_preset(preset_name, presets, templates, inheritance_chain=None):
+    inheritance_chain = inheritance_chain or []
+    if preset_name in inheritance_chain:
+        chain = " -> ".join(inheritance_chain + [preset_name])
+        raise ValueError(f"Circular preset inheritance: {chain}")
+
+    preset = presets[preset_name]
+    parent_name = preset.get("$extends")
+    if parent_name is None:
+        resolved = {}
+    else:
+        if parent_name not in presets:
+            raise ValueError(f"Unknown parent preset: {parent_name}")
+        resolved = resolve_preset(parent_name, presets, templates, inheritance_chain + [preset_name])
+
+    overrides = {key: value for key, value in preset.items() if key != "$extends"}
+    return merge_config(resolved, resolve_templates(overrides, templates))
 
 
 def resolve_templates(value, templates):
