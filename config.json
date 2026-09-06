@@ -1,27 +1,30 @@
 {
-  "zip_path": "input/Fairy.zip",
-  "output_sheet": "output/spritesheet.png",
-  "variant_names": [
-    "neutral",
-    "sad",
-    "angry",
-    "happy"
-  ],
-  "row_reuse": {
-    "hurt": "sad",
-    "defeat": "sad"
-  },
-  "lighten_hurt": true,
-  "invert_defeat": true,
-  "glow_colors": {
-    "sad": [0, 100, 255],
-    "angry": [255, 0, 50],
-    "happy": [255, 220, 0]
-  },
-  "glow_settings": {
-    "blur_radius": 3,
-    "expand_size": 7,
-    "pick_radius": 2,
-    "multiply_strength": 0.1
+  "default_preset": "standard",
+  "presets": {
+    "standard": {
+      "variant_names": [
+        "neutral",
+        "sad",
+        "angry",
+        "happy"
+      ],
+      "row_reuse": {
+        "hurt": "sad",
+        "defeat": "sad"
+      },
+      "lighten_hurt": true,
+      "invert_defeat": true,
+      "glow_colors": {
+        "sad": [0, 100, 255],
+        "angry": [255, 0, 50],
+        "happy": [255, 220, 0]
+      },
+      "glow_settings": {
+        "blur_radius": 3,
+        "expand_size": 7,
+        "pick_radius": 2,
+        "multiply_strength": 0.1
+      }
+    }
   }
 }

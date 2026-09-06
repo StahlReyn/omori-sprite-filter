@@ -28,20 +28,51 @@ def load_config(config_path):
     with open(config_path, "r") as f:
         return json.load(f)
 
+def read_path(prompt):
+    return input(prompt).strip().strip('"').strip("'")
+
+def select_config(config_data):
+    if "presets" not in config_data:
+        return config_data
+
+    presets = config_data["presets"]
+    if not presets:
+        raise ValueError("No config presets found.")
+
+    preset_names = list(presets)
+    default_preset = config_data.get("default_preset", preset_names[0])
+    if default_preset not in presets:
+        default_preset = preset_names[0]
+
+    print("Available config presets:")
+    for index, preset_name in enumerate(preset_names, start=1):
+        suffix = " (default)" if preset_name == default_preset else ""
+        print(f"  {index}. {preset_name}{suffix}")
+
+    while True:
+        choice = input(f"Choose a config preset [{default_preset}]: ").strip()
+        if choice == "":
+            return presets[default_preset]
+        if choice.isdigit() and 1 <= int(choice) <= len(preset_names):
+            return presets[preset_names[int(choice) - 1]]
+        if choice in presets:
+            return presets[choice]
+        print_error("Invalid preset. Enter its number or name.")
+
 def main():
     config_path = "config.json"
     if not Path(config_path).is_file():
-        print("config.json not found, creating default.")
-        create_default_config()
-    config = load_config(config_path)
+        print_error("config.json not found. Create it before running the program.")
+        return
+    config = select_config(load_config(config_path))
 
     while True:
-        input_path = input("Enter input zip path: ")
+        input_path = read_path("Enter input ZIP path (you can drag and drop the file here): ")
         if not Path(input_path).is_file():
             print_error(f"File not found at {input_path}.")
             continue
 
-        output_path = input("Enter output image path: ")
+        output_path = read_path("Enter output image file path (drag and drop a file, or press Enter): ")
         if output_path == "":
             output_path = "spritesheet.png"
             print(f"Default output to {output_path}")
@@ -187,35 +218,6 @@ def filter_image_file_list(archive):
 
     raw_file_list.sort()
     return raw_file_list
-
-def create_default_config():
-    data = {
-        "variant_names": [
-            "neutral",
-            "sad",
-            "angry",
-            "happy"
-        ],
-        "row_reuse": {
-            "hurt": "sad",
-            "defeat": "sad"
-        },
-        "lighten_hurt": true,
-        "invert_defeat": true,
-        "glow_colors": {
-            "sad": [0, 100, 255],
-            "angry": [255, 0, 50],
-            "happy": [255, 220, 0]
-        },
-        "glow_settings": {
-            "blur_radius": 3,
-            "expand_size": 7,
-            "pick_radius": 2,
-            "multiply_strength": 0.1
-        }
-    }
-    with open("user_data.json", "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=4)
 
 if __name__ == "__main__":
     main()
