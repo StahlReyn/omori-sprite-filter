@@ -1,7 +1,16 @@
 {
   "default_preset": "standard",
+  "templates": {
+    "portrait_sharpen": {
+      "enabled": true,
+      "radius": 1,
+      "percent": 25,
+      "threshold": 0
+    }
+  },
   "presets": {
     "standard": {
+      "description": "Animated sprite sheet with emotion effects.",
       "type": "animated",
       "variant_names": [
         "neutral",
@@ -9,6 +18,7 @@
         "angry",
         "happy"
       ],
+      "frame_order": [0, 1, 2, 1],
       "row_reuse": {
         "hurt": "sad",
         "defeat": "sad"
@@ -39,7 +49,7 @@
       }
     },
     "portrait_menu": {
-      "description": "Simple resize for menu sprite.",
+      "description": "Crop and resize portrait sprites for menus.",
       "type": "portrait",
       "columns": 3,
       "crop": {
@@ -54,13 +64,11 @@
       },
       "resampling": "lanczos",
       "sharpen": {
-        "enabled": true,
-        "radius": 1,
-        "percent": 25,
-        "threshold": 0
+        "$template": "portrait_sharpen"
       }
     },
     "portrait_battle_crop": {
+      "description": "Crop and resize portrait sprites for battle.",
       "type": "portrait",
       "columns": 3,
       "crop": {
@@ -75,13 +83,11 @@
       },
       "resampling": "lanczos",
       "sharpen": {
-        "enabled": true,
-        "radius": 1,
-        "percent": 25,
-        "threshold": 0
+        "$template": "portrait_sharpen"
       }
     },
     "portrait_dialogue_crop": {
+      "description": "Crop and resize portrait sprites for dialogue.",
       "type": "portrait",
       "columns": 4,
       "crop": {
@@ -96,10 +102,7 @@
       },
       "resampling": "lanczos",
       "sharpen": {
-        "enabled": true,
-        "radius": 1,
-        "percent": 25,
-        "threshold": 0
+        "$template": "portrait_sharpen"
       }
     }
   }

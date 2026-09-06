@@ -4,8 +4,9 @@ Automates creating consistent spritesheet from individual image frames
 ## Configuration
 
 Add presets to `config.json` under `presets`. The program lists animated and portrait
-presets when it starts; choose one by number or name, or press Enter to use
-`default_preset`.
+presets with their descriptions when it starts; choose one by number or name, or press
+Enter to use `default_preset`. All presets use the same input and output prompts: animated
+presets accept a ZIP file, while portrait presets accept a folder.
 
 The existing flat config format is still supported and is treated as one default preset.
 
@@ -17,6 +18,15 @@ the sample config: images are scaled to half size with bilinear resampling, then
 sharpened. Set `enabled` to `false` to keep the source size, or adjust `scale`,
 `resampling`, and the `sharpen` settings.
 
-Portrait presets use `type: "portrait"` and support a folder, crop, fixed resize,
-sharpening, and column count. They are processed without animated-sprite effects such
-as glow, frame reuse, or emotion rows.
+Portrait presets use `type: "portrait"` and support crop, fixed resize, sharpening, and
+column count. They are processed without animated-sprite effects such as glow, frame reuse,
+or emotion rows. Paths are supplied at runtime rather than stored in the config.
+
+Common nested settings can be reused with a template reference such as
+`{"$template": "portrait_sharpen"}`. A preset can override individual template fields.
+Omit `crop`, `resize`, or `sharpen` to skip that step.
+
+Animated presets can define `frame_order` to specify the final output-column order. Its
+values are zero-based positions within each source block, not literal filenames. For
+example, `[0, 1, 2, 1]` turns three source columns into four output columns by placing
+source column 1 in the fourth column. Omit it to keep the source order unchanged.

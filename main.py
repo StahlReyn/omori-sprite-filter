@@ -33,22 +33,22 @@ def main():
         print_error("config.json not found. Create it before running the program.")
         return
     config = select_config(load_config(config_path))
-    if config.get("type", "animated") == "portrait":
-        from portrait import create_sprite_sheet
-        create_sprite_sheet(config)
+    input_prompt = "Enter input folder path" if config.get("type") == "portrait" else "Enter input ZIP path"
+    input_path = read_path(f"{input_prompt} (you can drag and drop it here): ")
+    input_is_valid = Path(input_path).is_dir() if config.get("type") == "portrait" else Path(input_path).is_file()
+    if not input_is_valid:
+        print_error(f"Input path not found at {input_path}.")
         return
 
-    while True:
-        input_path = read_path("Enter input ZIP path (you can drag and drop the file here): ")
-        if not Path(input_path).is_file():
-            print_error(f"File not found at {input_path}.")
-            continue
+    output_path = read_path("Enter output image file path (drag and drop a file, or press Enter): ")
+    if output_path == "":
+        output_path = "spritesheet.png"
+        print(f"Default output to {output_path}")
 
-        output_path = read_path("Enter output image file path (drag and drop a file, or press Enter): ")
-        if output_path == "":
-            output_path = "spritesheet.png"
-            print(f"Default output to {output_path}")
-        
+    if config.get("type") == "portrait":
+        from portrait import create_sprite_sheet
+        create_sprite_sheet(input_path, output_path, config)
+    else:
         create_omori_animated_spritesheet(input_path, output_path, config)
 
 def create_omori_animated_spritesheet(input_path, output_path, config):
@@ -148,6 +148,26 @@ def row_name_convert(base_name, row_reuse):
     else:
         return base_name
 
+def apply_frame_order(emotion_blocks, frame_order=None, duplicate_last_frame=False):
+    if frame_order is None:
+        ordered_blocks = emotion_blocks
+    elif not frame_order:
+        raise ValueError("frame_order must contain at least one frame index.")
+
+    else:
+        ordered_blocks = {}
+        for name, frames in emotion_blocks.items():
+            if any(not isinstance(index, int) or index < 0 or index >= len(frames) for index in frame_order):
+                raise ValueError(f"frame_order contains an invalid index for {name}.")
+            ordered_blocks[name] = [frames[index] for index in frame_order]
+
+    if duplicate_last_frame:
+        for frames in ordered_blocks.values():
+            if not frames:
+                raise ValueError("Cannot duplicate the final frame of an empty block.")
+            frames.append(frames[-1])
+    return ordered_blocks
+
 def grab_emotion_blocks(zip_path, variant_names, config):
     print_with_timestamp(f"Loading Zip: {zip_path}")
     with zipfile.ZipFile(zip_path, "r") as archive:
@@ -173,7 +193,11 @@ def grab_emotion_blocks(zip_path, variant_names, config):
                 if name not in emotion_blocks:
                     emotion_blocks[name] = []
                 emotion_blocks[name].append(img)
-        return emotion_blocks
+        return apply_frame_order(
+            emotion_blocks,
+            config.get("frame_order"),
+            config.get("duplicate_last_frame", False)
+        )
     print_error("Failed loading zip file!")
 
 def filter_image_file_list(archive):

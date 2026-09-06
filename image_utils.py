@@ -1,6 +1,6 @@
 import json
 import math
-from pathlib import Path
+from copy import deepcopy
 
 from PIL import Image, ImageFilter
 
@@ -15,6 +15,7 @@ def select_config(config_data):
         return config_data
 
     presets = config_data["presets"]
+    templates = config_data.get("templates", {})
     if not presets:
         raise ValueError("No config presets found.")
 
@@ -26,17 +27,43 @@ def select_config(config_data):
     print("Available config presets:")
     for index, preset_name in enumerate(preset_names, start=1):
         suffix = " (default)" if preset_name == default_preset else ""
-        print(f"  {index}. {preset_name}{suffix}")
+        description = presets[preset_name].get("description", "")
+        description = f" - {description}" if description else ""
+        print(f"  {index}. {preset_name}{suffix}{description}")
 
     while True:
         choice = input(f"Choose a config preset [{default_preset}]: ").strip()
         if choice == "":
-            return presets[default_preset]
+            return resolve_templates(presets[default_preset], templates)
         if choice.isdigit() and 1 <= int(choice) <= len(preset_names):
-            return presets[preset_names[int(choice) - 1]]
+            return resolve_templates(presets[preset_names[int(choice) - 1]], templates)
         if choice in presets:
-            return presets[choice]
+            return resolve_templates(presets[choice], templates)
         print("Invalid preset. Enter its number or name.")
+
+
+def resolve_templates(value, templates):
+    if isinstance(value, dict):
+        if "$template" in value:
+            template_name = value["$template"]
+            if template_name not in templates:
+                raise ValueError(f"Unknown config template: {template_name}")
+            resolved = deepcopy(templates[template_name])
+            overrides = {key: item for key, item in value.items() if key != "$template"}
+            return merge_config(resolved, resolve_templates(overrides, templates))
+        return {key: resolve_templates(item, templates) for key, item in value.items()}
+    if isinstance(value, list):
+        return [resolve_templates(item, templates) for item in value]
+    return value
+
+
+def merge_config(base, overrides):
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            merge_config(base[key], value)
+        else:
+            base[key] = value
+    return base
 
 
 def resize_and_sharpen(img, settings):

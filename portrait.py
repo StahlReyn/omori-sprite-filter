@@ -2,15 +2,13 @@ import os
 
 from PIL import Image
 
-from image_utils import create_grid_sheet, load_config, process_image, select_config
+from image_utils import create_grid_sheet, process_image
 
 
 VALID_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
 
 
-def create_sprite_sheet(config):
-    folder_path = config.get("folder_path", ".")
-    output_name = config.get("output_name", "spritesheet.png")
+def create_sprite_sheet(folder_path, output_name, config):
     image_files = sorted(
         file_name for file_name in os.listdir(folder_path)
         if file_name.lower().endswith(VALID_EXTENSIONS)
@@ -36,9 +34,5 @@ def create_sprite_sheet(config):
     print(f"Generated {output_name} ({columns}x{rows} grid, Cell size: {cell_width}x{cell_height})")
 
 
-def create_sprite_sheet_from_config(config_path="config.json"):
-    create_sprite_sheet(select_config(load_config(config_path)))
-
-
 if __name__ == "__main__":
-    create_sprite_sheet_from_config()
+    print("Run main.py to select a portrait preset and provide input/output paths.")
