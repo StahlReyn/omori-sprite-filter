@@ -1,13 +1,13 @@
 import io
-import json
 import math
 import os
 import zipfile
 
 from pathlib import Path
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance
 
 from filters import apply_desat, apply_invert, apply_random_pick_glow, apply_channel_multiplier
+from image_utils import load_config, process_image, select_config
 from printutil import print_error, print_with_timestamp
 
 # This script creates sprite sheet and effect from individual image files
@@ -24,72 +24,8 @@ from printutil import print_error, print_with_timestamp
 # - Row 5: Angry (Red Glow)
 # - Row 6: Happy (Yellow Glow)
 
-def load_config(config_path):
-    with open(config_path, "r") as f:
-        return json.load(f)
-
 def read_path(prompt):
     return input(prompt).strip().strip('"').strip("'")
-
-def resize_and_sharpen(img, settings):
-    if not settings.get("enabled", True):
-        return img
-
-    scale = float(settings.get("scale", 0.5))
-    if scale <= 0:
-        raise ValueError("resize_settings.scale must be greater than zero.")
-
-    resampling = settings.get("resampling", "bilinear").lower()
-    resampling_filters = {
-        "nearest": Image.Resampling.NEAREST,
-        "bilinear": Image.Resampling.BILINEAR,
-        "bicubic": Image.Resampling.BICUBIC,
-        "lanczos": Image.Resampling.LANCZOS,
-    }
-    if resampling not in resampling_filters:
-        raise ValueError(f"Unsupported resize resampling filter: {resampling}")
-
-    resized = img.resize(
-        (max(1, round(img.width * scale)), max(1, round(img.height * scale))),
-        resampling_filters[resampling]
-    )
-
-    sharpen_settings = settings.get("sharpen", {})
-    if sharpen_settings.get("enabled", True):
-        resized = resized.filter(ImageFilter.UnsharpMask(
-            radius=float(sharpen_settings.get("radius", 1)),
-            percent=int(sharpen_settings.get("percent", 50)),
-            threshold=int(sharpen_settings.get("threshold", 0))
-        ))
-    return resized
-
-def select_config(config_data):
-    if "presets" not in config_data:
-        return config_data
-
-    presets = config_data["presets"]
-    if not presets:
-        raise ValueError("No config presets found.")
-
-    preset_names = list(presets)
-    default_preset = config_data.get("default_preset", preset_names[0])
-    if default_preset not in presets:
-        default_preset = preset_names[0]
-
-    print("Available config presets:")
-    for index, preset_name in enumerate(preset_names, start=1):
-        suffix = " (default)" if preset_name == default_preset else ""
-        print(f"  {index}. {preset_name}{suffix}")
-
-    while True:
-        choice = input(f"Choose a config preset [{default_preset}]: ").strip()
-        if choice == "":
-            return presets[default_preset]
-        if choice.isdigit() and 1 <= int(choice) <= len(preset_names):
-            return presets[preset_names[int(choice) - 1]]
-        if choice in presets:
-            return presets[choice]
-        print_error("Invalid preset. Enter its number or name.")
 
 def main():
     config_path = "config.json"
@@ -97,6 +33,10 @@ def main():
         print_error("config.json not found. Create it before running the program.")
         return
     config = select_config(load_config(config_path))
+    if config.get("type", "animated") == "portrait":
+        from portrait import create_sprite_sheet
+        create_sprite_sheet(config)
+        return
 
     while True:
         input_path = read_path("Enter input ZIP path (you can drag and drop the file here): ")
@@ -119,17 +59,13 @@ def create_omori_animated_spritesheet(input_path, output_path, config):
     glow_settings = config["glow_settings"]
 
     # Gather and sort files from ZIP alphabetically
-    emotion_blocks = grab_emotion_blocks(
-        input_path,
-        variant_names,
-        config.get("resize_settings")
-    )
+    emotion_blocks = grab_emotion_blocks(input_path, variant_names, config)
 
     frames_per_emotion = len(emotion_blocks["neutral"])
     frame_size = emotion_blocks["neutral"][0].size
 
     # Normalize frame lists to make sure they all have an identical count
-    for block in emotion_blocks:
+    for block in emotion_blocks.values():
         while len(block) < frames_per_emotion:
             block.append(block[-1] if block else Image.new("RGBA", frame_size, (0,0,0,0)))
 
@@ -212,7 +148,7 @@ def row_name_convert(base_name, row_reuse):
     else:
         return base_name
 
-def grab_emotion_blocks(zip_path, variant_names, resize_settings=None):
+def grab_emotion_blocks(zip_path, variant_names, config):
     print_with_timestamp(f"Loading Zip: {zip_path}")
     with zipfile.ZipFile(zip_path, "r") as archive:
         raw_file_list = filter_image_file_list(archive)
@@ -229,8 +165,7 @@ def grab_emotion_blocks(zip_path, variant_names, resize_settings=None):
             print_with_timestamp(f"File Got: {file_path}")
             with archive.open(file_path) as file_stream:
                 img = Image.open(io.BytesIO(file_stream.read())).convert("RGBA")
-                if resize_settings is not None:
-                    img = resize_and_sharpen(img, resize_settings)
+                img = process_image(img, config)
                 
                 # Determine which block this sequence index belongs to
                 block_idx = idx // frames_per_emotion

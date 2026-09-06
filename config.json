@@ -2,6 +2,7 @@
   "default_preset": "standard",
   "presets": {
     "standard": {
+      "type": "animated",
       "variant_names": [
         "neutral",
         "sad",
@@ -35,6 +36,70 @@
         "expand_size": 7,
         "pick_radius": 2,
         "multiply_strength": 0.1
+      }
+    },
+    "portrait_menu": {
+      "description": "Simple resize for menu sprite.",
+      "type": "portrait",
+      "columns": 3,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 512,
+        "bottom": 512
+      },
+      "resize": {
+        "width": 128,
+        "height": 128
+      },
+      "resampling": "lanczos",
+      "sharpen": {
+        "enabled": true,
+        "radius": 1,
+        "percent": 25,
+        "threshold": 0
+      }
+    },
+    "portrait_battle_crop": {
+      "type": "portrait",
+      "columns": 3,
+      "crop": {
+        "left": 44,
+        "top": 88,
+        "right": 468,
+        "bottom": 512
+      },
+      "resize": {
+        "width": 106,
+        "height": 106
+      },
+      "resampling": "lanczos",
+      "sharpen": {
+        "enabled": true,
+        "radius": 1,
+        "percent": 25,
+        "threshold": 0
+      }
+    },
+    "portrait_dialogue_crop": {
+      "type": "portrait",
+      "columns": 4,
+      "crop": {
+        "left": 138,
+        "top": 276,
+        "right": 562,
+        "bottom": 700
+      },
+      "resize": {
+        "width": 106,
+        "height": 106
+      },
+      "resampling": "lanczos",
+      "sharpen": {
+        "enabled": true,
+        "radius": 1,
+        "percent": 25,
+        "threshold": 0
       }
     }
   }
