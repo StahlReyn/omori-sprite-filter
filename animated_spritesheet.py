@@ -21,11 +21,13 @@ def create_omori_animated_spritesheet(input_path, output_path, config, export_si
     # Gather and sort files from ZIP alphabetically
     emotion_blocks = grab_emotion_blocks(input_path, variant_names, config)
 
-    frames_per_emotion = len(emotion_blocks["neutral"])
-    frame_size = emotion_blocks["neutral"][0].size
+    neutral_name = row_name_convert("neutral", row_reuse)
+    frames_per_emotion = len(emotion_blocks[neutral_name])
+    frame_size = emotion_blocks[neutral_name][0].size
 
     # Normalize frame lists to make sure they all have an identical count
     for block in emotion_blocks.values():
+        del block[frames_per_emotion:]
         while len(block) < frames_per_emotion:
             block.append(block[-1] if block else Image.new("RGBA", frame_size, (0,0,0,0)))
 
@@ -53,7 +55,7 @@ def create_omori_animated_spritesheet(input_path, output_path, config, export_si
     happy_color = tuple(glow_colors["happy"])
     
     sprite_matrix = [
-        emotion_blocks["neutral"],
+        emotion_blocks[neutral_name],
         hurt_row,
         defeat_row,
         [apply_glow_config(f, sad_color, glow_settings) for f in emotion_blocks[row_name_convert("sad", row_reuse)]],
@@ -91,6 +93,18 @@ def create_omori_animated_spritesheet(input_path, output_path, config, export_si
         single_frame.save(single_output_path, "PNG")
         single_frame.close()
         print_with_timestamp(f"Saved first frame to {single_output_path}.")
+
+
+def count_input_images(input_path):
+    input_path = Path(input_path)
+    if input_path.is_dir():
+        return sum(
+            path.is_file() and path.suffix.lower() in (".png", ".jpg", ".jpeg", ".bmp", ".webp")
+            for path in input_path.rglob("*")
+        )
+
+    with zipfile.ZipFile(input_path, "r") as archive:
+        return len(filter_image_file_list(archive) or [])
     
 def apply_glow_config(img, glow_color, setting):
     if "multiply_strength" in setting:
@@ -154,14 +168,56 @@ def grab_emotion_blocks(zip_path, variant_names, config):
 
     try:
         total_files = len(raw_file_list)
-        
-        # Calculate how many animation frames exist per emotion slot
-        variant_count = len(variant_names)
-        frames_per_emotion = math.ceil(total_files / variant_count)
-        print_with_timestamp(f"Found {total_files} files. Splitting into {variant_count} variants with {frames_per_emotion} frames each.")
+
+        if not variant_names or len(set(variant_names)) != len(variant_names):
+            raise ValueError("variant_names must contain unique group names.")
+
+        frames_per_variant = config.get("frames_per_variant")
+        configured_frame_counts = config.get("variant_frame_counts")
+        if frames_per_variant is not None and configured_frame_counts is not None:
+            raise ValueError("Use either frames_per_variant or variant_frame_counts, not both.")
+
+        if frames_per_variant is not None:
+            if not isinstance(frames_per_variant, int) or isinstance(frames_per_variant, bool) or frames_per_variant <= 0:
+                raise ValueError("frames_per_variant must be a positive integer.")
+            frame_counts = [frames_per_variant] * len(variant_names)
+            if sum(frame_counts) != total_files:
+                raise ValueError(
+                    f"frames_per_variant={frames_per_variant} for {len(variant_names)} groups "
+                    f"requires {sum(frame_counts)} input images, found {total_files}."
+                )
+            print_with_timestamp(
+                f"Found {total_files} files. Assigning {frames_per_variant} images to each of "
+                f"{len(variant_names)} groups."
+            )
+        elif configured_frame_counts is None:
+            variant_count = len(variant_names)
+            frames_per_emotion = math.ceil(total_files / variant_count)
+            print_with_timestamp(f"Found {total_files} files. Splitting into {variant_count} variants with {frames_per_emotion} frames each.")
+            frame_counts = None
+        else:
+            if not isinstance(configured_frame_counts, dict):
+                raise ValueError("variant_frame_counts must be a mapping of group names to positive integers.")
+            missing_names = [name for name in variant_names if name not in configured_frame_counts]
+            if missing_names:
+                raise ValueError(f"variant_frame_counts is missing group counts for: {', '.join(missing_names)}")
+            frame_counts = [configured_frame_counts[name] for name in variant_names]
+            if any(not isinstance(count, int) or isinstance(count, bool) or count <= 0 for count in frame_counts):
+                raise ValueError("variant_frame_counts values must be positive integers.")
+            if sum(frame_counts) != total_files:
+                raise ValueError(
+                    f"variant_frame_counts total {sum(frame_counts)} does not match the {total_files} input images."
+                )
+            print_with_timestamp(
+                f"Found {total_files} files. Assigning group counts: "
+                + ", ".join(f"{name}={count}" for name, count in zip(variant_names, frame_counts))
+                + "."
+            )
 
         # Read files and slice them into sequential animation blocks
         emotion_blocks = {}
+        group_index = 0
+        group_end = frame_counts[0] if frame_counts is not None else None
         for idx, (file_path, file_stream) in enumerate(image_streams):
             print_with_timestamp(f"File Got: {file_path}")
             with file_stream:
@@ -169,7 +225,13 @@ def grab_emotion_blocks(zip_path, variant_names, config):
                 img = process_image(img, config)
                 
                 # Determine which block this sequence index belongs to
-                block_idx = idx // frames_per_emotion
+                if frame_counts is None:
+                    block_idx = idx // frames_per_emotion
+                else:
+                    while idx >= group_end:
+                        group_index += 1
+                        group_end += frame_counts[group_index]
+                    block_idx = group_index
                 name = variant_names[block_idx]
                 if name not in emotion_blocks:
                     emotion_blocks[name] = []

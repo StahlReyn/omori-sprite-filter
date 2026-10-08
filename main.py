@@ -2,7 +2,7 @@ from pathlib import Path
 
 from image_utils import load_config, select_config
 from printutil import print_error, print_info
-from animated_spritesheet import create_omori_animated_spritesheet
+from animated_spritesheet import count_input_images, create_omori_animated_spritesheet
 
 def read_path(prompt):
     return input(prompt).strip().strip('"').strip("'")
@@ -14,13 +14,15 @@ def default_output_path(input_path):
     return path.parent / f"{path.name}.png"
 
 def process_once(config_path):
-    config = select_config(load_config(config_path))
     print_info("HINT: Drag and drop a file on Windows copies file path.")
     input_path = read_path("Enter input ZIP or folder path: ")
     input_is_valid = Path(input_path).is_file() or Path(input_path).is_dir()
     if not input_is_valid:
         print_error(f"Input path not found at {input_path}.")
         return
+
+    image_count = count_input_images(input_path)
+    config = select_config(load_config(config_path), image_count=image_count)
 
     output_path = read_path("Enter output image file path: ")
     if output_path == "":

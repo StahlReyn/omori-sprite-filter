@@ -8,6 +8,54 @@
       "threshold": 0
     }
   },
+  "custom_options": {
+    "variant_names": [
+      ["neutral"],
+      ["neutral", "sad", "angry", "happy"]
+    ],
+    "frames_per_variant": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "frame_order": [
+      [0],
+      [0, 1],
+      [0, 1, 2],
+      [0, 1, 2, 1]
+    ],
+    "row_reuse": [
+      {
+        "neutral": "neutral",
+        "hurt": "neutral",
+        "defeat": "neutral",
+        "sad": "neutral",
+        "angry": "neutral",
+        "happy": "neutral"
+      },
+      {"hurt": "sad", "defeat": "sad"}
+    ],
+    "invert_defeat": [
+      false,
+      true
+    ],
+    "resize": [
+      {
+        "enabled": true,
+        "scale": 0.5,
+        "resampling": "bilinear",
+        "sharpen": {"$template": "default_sharpen"}
+      },
+      {
+        "enabled": true,
+        "scale": 0.25,
+        "resampling": "bilinear",
+        "sharpen": {"$template": "default_sharpen"}
+      },
+      {"enabled": false}
+    ]
+  },
   "presets": {
     "standard": {
       "description": "Standard enemy sprite sheet. Uses sad for hurt/defeat.",
@@ -18,6 +66,7 @@
         "angry",
         "happy"
       ],
+      "frames_per_variant": 3,
       "row_reuse": {
         "hurt": "sad",
         "defeat": "sad"
@@ -49,6 +98,16 @@
       "$extends": "standard",
       "description": "Animated sprite sheet without defeat inversion.",
       "invert_defeat": false
+    },
+    "standard_three_frame": {
+      "$extends": "standard",
+      "description": "Standard animated sprite sheet with three output frames.",
+      "frame_order": [0, 1, 2]
+    },
+    "standard_two_frame": {
+      "$extends": "standard",
+      "description": "Standard animated sprite sheet with two output frames.",
+      "frame_order": [0, 1]
     },
     "standard_neutral": {
       "$extends": "standard",

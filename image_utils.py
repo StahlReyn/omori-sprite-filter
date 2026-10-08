@@ -1,5 +1,6 @@
 import json
 import math
+import textwrap
 from copy import deepcopy
 
 from PIL import Image, ImageFilter
@@ -10,22 +11,33 @@ def load_config(config_path):
         return json.load(file)
 
 
-def select_config(config_data):
+def select_config(config_data, image_count=None):
     if "presets" not in config_data:
         return config_data
 
     presets = config_data["presets"]
     templates = config_data.get("templates", {})
+    custom_options = config_data.get("custom_options", {})
     if not presets:
         raise ValueError("No config presets found.")
+    if not isinstance(custom_options, dict):
+        raise ValueError("custom_options must be a mapping of setting names to option lists.")
 
     preset_names = list(presets)
     default_preset = config_data.get("default_preset", preset_names[0])
     if default_preset not in presets:
         default_preset = preset_names[0]
 
-    print("Available config presets:")
-    for index, preset_name in enumerate(preset_names, start=1):
+    if image_count is not None:
+        print(f"Input images found: {image_count}")
+
+    preset_offset = 1
+    if custom_options:
+        print("\n--- CUSTOM ---")
+        print(f"  1. Custom settings based on {default_preset}")
+        preset_offset = 2
+    print("\n--- PRESETS ---")
+    for index, preset_name in enumerate(preset_names, start=preset_offset):
         suffix = " (default)" if preset_name == default_preset else ""
         description = presets[preset_name].get("description", "")
         description = f" - {description}" if description else ""
@@ -33,14 +45,96 @@ def select_config(config_data):
     print("=" * 32)
 
     while True:
-        choice = input(f"Choose a config preset [{default_preset}]: ").strip()
+        choice = input(f"Choose a configuration [{default_preset}]: ").strip()
         if choice == "":
             return resolve_preset(default_preset, presets, templates)
-        if choice.isdigit() and 1 <= int(choice) <= len(preset_names):
-            return resolve_preset(preset_names[int(choice) - 1], presets, templates)
+        if custom_options and (choice == "1" or choice.lower() == "custom"):
+            config = resolve_preset(default_preset, presets, templates)
+            return apply_custom_options(config, custom_options, templates)
+        if choice.isdigit():
+            preset_index = int(choice) - preset_offset
+            if 0 <= preset_index < len(preset_names):
+                return resolve_preset(preset_names[preset_index], presets, templates)
         if choice in presets:
             return resolve_preset(choice, presets, templates)
-        print("Invalid preset. Enter its number or name.")
+        print("Invalid choice. Enter a number or preset name.")
+
+
+def apply_custom_options(config, custom_options, templates=None):
+    templates = templates or {}
+    for setting_name, options in custom_options.items():
+        if not isinstance(options, list) or not options:
+            raise ValueError(f"custom_options.{setting_name} must be a non-empty list.")
+
+        label = setting_name.replace("_", " ").title()
+        print(f"\n--- {label.upper()} ---")
+        current_value = config.get(setting_name)
+        print_custom_value("  Current: ", current_value)
+
+        if setting_name == "frames_per_variant":
+            print(f"  Available values: {', '.join(str(option) for option in options)}")
+            while True:
+                choice = input(f"  Frames per variant [{current_value}]: ").strip()
+                if choice == "":
+                    break
+                if choice.isdigit() and int(choice) in options:
+                    config[setting_name] = int(choice)
+                    break
+                print("  Enter one of the available frame counts or press Enter to keep the current value.")
+            continue
+
+        if setting_name == "invert_defeat":
+            print("  Options: y/yes, n/no")
+            while True:
+                default = "Y/n" if current_value else "y/N"
+                choice = input(f"  Invert defeat? [{default}]: ").strip().lower()
+                if choice == "":
+                    break
+                if choice in ("y", "yes") and True in options:
+                    config[setting_name] = True
+                    break
+                if choice in ("n", "no") and False in options:
+                    config[setting_name] = False
+                    break
+                print("  Enter y or n, or press Enter to keep the current value.")
+            continue
+
+        available_options = []
+        for option in options:
+            if isinstance(option, dict) and "value" in option:
+                option_value = option["value"]
+            else:
+                option_value = option
+            available_options.append(resolve_templates(deepcopy(option_value), templates))
+
+        for index, option_value in enumerate(available_options, start=1):
+            print_custom_value(f"  {index}. ", option_value)
+
+        while True:
+            choice = input(f"  Choose {label.lower()} [Enter to keep current]: ").strip()
+            if choice == "":
+                break
+            if choice.isdigit() and 1 <= int(choice) <= len(available_options):
+                config[setting_name] = deepcopy(available_options[int(choice) - 1])
+                break
+            print("  Invalid choice. Enter one of the listed numbers or press Enter.")
+
+    return config
+
+
+def print_custom_value(prefix, value, width=88):
+    serialized = json.dumps(value, ensure_ascii=False)
+    available_width = max(24, width - len(prefix))
+    lines = textwrap.wrap(
+        serialized,
+        width=available_width,
+        subsequent_indent=" " * len(prefix),
+        break_long_words=True,
+        break_on_hyphens=False
+    ) or [""]
+    print(prefix + lines[0])
+    for line in lines[1:]:
+        print(line)
 
 
 def resolve_preset(preset_name, presets, templates, inheritance_chain=None):
